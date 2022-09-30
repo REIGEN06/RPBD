@@ -175,11 +175,31 @@ SELECT getCountBirth(1989) As CountOfPeople
 ```
 # Напишите функцию, которая возвращает количество человек с заданным цветом глаз.
 ```sql
-
+CREATE OR REPLACE FUNCTION getCountColorEye(x char) RETURNS int AS $$
+DECLARE
+	pCount int;
+BEGIN
+	SELECT count(p.id) INTO pCount
+	FROM people p
+	WHERE p.eyes = x;
+	RETURN pCount;
+END
+$$ LANGUAGE plpgsql;
+SELECT getCountColorEye('blue') As CountOfPeopleWithColorEye
 ```
 # Напишите функцию, которая возвращает ID самого молодого человека в таблице.
 ```sql
-
+CREATE OR REPLACE FUNCTION getYoungest() RETURNS int AS $$
+DECLARE
+	pID int;
+BEGIN
+	SELECT p.id INTO pID
+	FROM people p
+	WHERE p.birth_date = (SELECT MAX(people.birth_date) FROM people);
+	RETURN pID;
+END
+$$ LANGUAGE plpgsql;
+SELECT getYoungest() As TheYoungest
 ```
 # Напишите процедуру, которая возвращает людей с индексом массы тела больше заданного. ИМТ = масса в кг / (рост в м)^2.
 ```sql
