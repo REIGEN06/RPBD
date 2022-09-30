@@ -203,7 +203,20 @@ SELECT getYoungest() As TheYoungest
 ```
 # Напишите процедуру, которая возвращает людей с индексом массы тела больше заданного. ИМТ = масса в кг / (рост в м)^2.
 ```sql
-
+CREATE OR REPLACE PROCEDURE procedureWeight(x int) AS $$
+DECLARE
+	person people%ROWTYPE;
+BEGIN
+FOR person IN SELECT * FROM people
+	LOOP
+		IF person.weight/((person.growth*person.growth)/10000) >x THEN 
+		RAISE NOTICE '%',person;
+		ELSE RAISE NOTICE 'Nothing';
+		END IF;	
+	END LOOP;
+END
+$$ LANGUAGE plpgsql;
+CALL procedureWeight(23)
 ```
 # Измените схему БД так, чтобы в БД можно было хранить родственные связи между людьми. Код должен быть представлен в виде транзакции (Например (добавление атрибута): # BEGIN; ALTER TABLE people ADD COLUMN leg_size REAL; COMMIT;). Дополните БД данными.
 ```sql
