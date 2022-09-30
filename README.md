@@ -123,7 +123,42 @@ CALL procedureCOLLATSE(10);
 ```
 
 # Числа Люка. Объявляем и присваиваем значение переменной - количество числе Люка. Вывести на экран последовательность чисел. Где L0 = 2, L1 = 1 ; Ln=Ln-1 + Ln-2 (сумма двух предыдущих чисел). Задания: написать фунцию, входной параметр - количество чисел, на выходе - последнее число (Например: входной 5, 2 1 3 4 7 - на выходе число 7); написать процедуру, которая выводит все числа последовательности. Входной параметр - количество чисел.
-
+```sql
+CREATE OR REPLACE FUNCTION Luke(x int) RETURNS int AS $$
+DECLARE
+L0 int := 2;
+L1 int := 1;
+Ln int;
+BEGIN
+	FOR x IN 3..x LOOP
+		Ln := L1 + L0;
+		L0 := L1;
+		L1 := Ln;
+	END LOOP;
+RETURN Ln;
+END
+$$ LANGUAGE plpgsql;
+SELECT LUKE(5);
+```
+```sql
+CREATE OR REPLACE PROCEDURE procedureLuke(x int) AS $$
+DECLARE
+L0 int := 2;
+L1 int := 1;
+Ln int;
+BEGIN
+	RAISE NOTICE '%',L0;
+	RAISE NOTICE '%',L1;
+	FOR x IN 3..x LOOP
+		Ln := L1 + L0;
+		L0 := L1;
+		L1 := Ln;
+		RAISE NOTICE '%',Ln;
+	END LOOP;
+END
+$$ LANGUAGE plpgsql;
+CALL procedureLUKE(5);
+```
 Напишите функцию, которая возвращает количество человек родившихся в заданном году.
 Напишите функцию, которая возвращает количество человек с заданным цветом глаз.
 Напишите функцию, которая возвращает ID самого молодого человека в таблице.
