@@ -1,5 +1,5 @@
-# RPBD_1
-#Выведите на экран любое сообщение
+# RPBD_1_Yakubov
+# Выведите на экран любое сообщение
 ```sql
 SELECT 'Hello I am Dan' as Любое_сообщение
 ```
@@ -34,7 +34,7 @@ BEGIN
 END
 $$ LANGUAGE plpgsql;
 ```
-```
+```sql
 CREATE OR REPLACE FUNCTION sposobCASE (a int) RETURNS char AS $$
 BEGIN
 	CASE WHEN (a=5) THEN RETURN 'Отлично';
@@ -64,7 +64,7 @@ END
 $$ LANGUAGE plpgsql;
 CALL raiseLOOP();
 ```
-```
+```sql
 CREATE OR REPLACE PROCEDURE raiseWHILE() AS $$
 DECLARE 
 	x int := 20;
@@ -77,7 +77,7 @@ END
 $$ LANGUAGE plpgsql;
 CALL raiseWHILE();
 ```
-```
+```sql
 CREATE OR REPLACE PROCEDURE raiseFOR() AS $$
 DECLARE 
 	x int := 20;
@@ -108,7 +108,7 @@ END
 $$ LANGUAGE plpgsql;
 SELECT COLLATSE(10);
 ```
-```
+```sql
 CREATE OR REPLACE PROCEDURE procedureCOLLATSE (a int) AS $$
 BEGIN
 	WHILE (a != 1)LOOP
