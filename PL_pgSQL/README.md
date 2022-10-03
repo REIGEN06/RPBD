@@ -220,7 +220,15 @@ CALL procedureWeight(23)
 ```
 # 12.Измените схему БД так, чтобы в БД можно было хранить родственные связи между людьми. Код должен быть представлен в виде транзакции (Например (добавление атрибута): # BEGIN; ALTER TABLE people ADD COLUMN leg_size REAL; COMMIT;). Дополните БД данными.
 ```sql
+CREATE OR REPLACE PROCEDURE addChildColumn() AS $$
+BEGIN
+ALTER TABLE people ADD COLUMN child_id INT;
 
+INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair, child_id)
+VALUES ('ilya', 'ivanov', '10.05.1964', 185.1, 101.5, 'brown', 'brown', '1'),
+('mihail', 'petrov', '09.19.1961', 191.2, 99.8, 'blue', 'brown', '3');
+COMMIT
+$$ LANGUAGE plpgsql;
 ```
 # 13.Напишите процедуру, которая позволяет создать в БД нового человека с указанным родством.
 ```sql
