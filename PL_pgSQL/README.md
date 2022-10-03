@@ -222,13 +222,15 @@ CALL procedureWeight(23)
 ```sql
 CREATE OR REPLACE PROCEDURE addChildColumn() AS $$
 BEGIN
-ALTER TABLE people ADD COLUMN child_id INT;
-
+ALTER TABLE people ADD COLUMN child_id INT DEFAULT '0';
+COMMIT;
 INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair, child_id)
 VALUES ('ilya', 'ivanov', '10.05.1964', 185.1, 101.5, 'brown', 'brown', '1'),
 ('mihail', 'petrov', '09.19.1961', 191.2, 99.8, 'blue', 'brown', '3');
-COMMIT
+END
 $$ LANGUAGE plpgsql;
+
+CALL addChildColumn();
 ```
 # 13.Напишите процедуру, которая позволяет создать в БД нового человека с указанным родством.
 ```sql
