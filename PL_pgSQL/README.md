@@ -257,5 +257,13 @@ CALL setATime();
 ```
 # 15.Напишите процедуру, которая позволяет актуализировать рост и вес человека.
 ```sql
+DROP PROCEDURE actualizegw(integer,real,real);
+CREATE OR REPLACE PROCEDURE ActualizeGW(pid INT, pGrowth REAL, pWeigth REAL) AS $$
+BEGIN
+	UPDATE people SET growth = pGrowth, weight = pWeigth, actual_time = NOW()
+	WHERE people.id = pid;
+END
+$$ LANGUAGE plpgsql;
 
+CALL ActualizeGW(1, 666.0, 444.1);
 ```
