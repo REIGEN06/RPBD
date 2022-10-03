@@ -234,7 +234,15 @@ CALL addChildColumn();
 ```
 # 13.Напишите процедуру, которая позволяет создать в БД нового человека с указанным родством.
 ```sql
+CREATE OR REPLACE PROCEDURE addPerson 
+(name varchar, surname varchar, birth_date date, growth real, weight real, eyes varchar, hair varchar, child_id int) AS $$
+BEGIN
+	INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair, child_id)
+	VALUES (name, surname, birth_date, growth, weight, eyes, hair, child_id);
+END
+$$ LANGUAGE plpgsql;
 
+CALL addPerson('aleksei', 'orlov', '05.06.1965', 178.3, 78.3, 'blue', 'blond', 3)
 ```
 # 14.Измените схему БД так, чтобы в БД можно было хранить время актуальности данных человека (выполнить также, как п.12).
 ```sql
