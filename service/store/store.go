@@ -45,18 +45,30 @@ func NewStore(connString string) *Store {
 
 func (s *Store) ListPeople() ([]People, error) {
 
-	rows, err := conn.Query(context.Background(), `
+	rows, err := s.conn.Query(context.Background(), `
 	SELECT name, address
 	FROM client
 	`)
 	if err != nil {
-		// return fmt.Errorf("client query failed: %w", err)
 		fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
-		return
+		return nil, nil
 	}
 	defer rows.Close()
+	people := make([]People, 0) //слайс со всеми людьми
+	for rows.Next() {
+		var (
+			name    string
+			address string
+		)
 
-	return nil, nil
+		if err := rows.Scan(&name, &address); err != nil {
+			fmt.Fprintf(os.Stderr, "scan failed: %v\n", err)
+			return nil, nil
+		}
+		people = append(people, rows.Scan(&name, &address))
+
+	}
+	return people, err
 }
 
 func (s *Store) GetPeopleByID(id string) (People, error) {
