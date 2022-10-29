@@ -220,40 +220,36 @@ CALL procedureWeight(23)
 ```
 # 12.Измените схему БД так, чтобы в БД можно было хранить родственные связи между людьми. Код должен быть представлен в виде транзакции (Например (добавление атрибута): # BEGIN; ALTER TABLE people ADD COLUMN leg_size REAL; COMMIT;). Дополните БД данными.
 ```sql
-CREATE OR REPLACE PROCEDURE addChildColumn() AS $$
-BEGIN
-ALTER TABLE people ADD COLUMN child_id INT DEFAULT '0';
+BEGIN;
+CREATE TABLE people_family (people_id int REFERENCES people(id), family_member_id int REFERENCES people(id));
+INSERT INTO people_family (people_id, family_member_id)
+VALUES (3, 4), (3, 5), (2, 6);
 COMMIT;
-INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair, child_id)
-VALUES ('ilya', 'ivanov', '10.05.1964', 185.1, 101.5, 'brown', 'brown', '1'),
-('mihail', 'petrov', '09.19.1961', 191.2, 99.8, 'blue', 'brown', '3');
-END
-$$ LANGUAGE plpgsql;
-
-CALL addChildColumn();
 ```
 # 13.Напишите процедуру, которая позволяет создать в БД нового человека с указанным родством.
 ```sql
-CREATE OR REPLACE PROCEDURE addPerson 
-(name varchar, surname varchar, birth_date date, growth real, weight real, eyes varchar, hair varchar, child_id int) AS $$
+CREATE OR REPLACE PROCEDURE addPersonWithFamily
+(name varchar, surname varchar, birth_date date, growth real, weight real, eyes varchar, hair varchar, family_member_id int) AS $$
+DECLARE
+	person_id int;
 BEGIN
-	INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair, child_id)
-	VALUES (name, surname, birth_date, growth, weight, eyes, hair, child_id);
+	INSERT INTO people (name, surname, birth_date, growth, weight, eyes, hair)
+	VALUES (name, surname, birth_date, growth, weight, eyes, hair) RETURNING id INTO person_id;
+	
+	INSERT INTO people_family (people_id, family_member_id)
+	VALUES (person_id, family_member_id);
+	INSERT INTO people_family (people_id, family_member_id)
+	VALUES (family_member_id, person_id);
 END
 $$ LANGUAGE plpgsql;
 
-CALL addPerson('aleksei', 'orlov', '05.06.1965', 178.3, 78.3, 'blue', 'blond', 3)
+CALL addPersonWithFamily('aleksei', 'orlov', '05.06.1965', 178.3, 78.3, 'blue', 'blond', 3)
 ```
 # 14.Измените схему БД так, чтобы в БД можно было хранить время актуальности данных человека (выполнить также, как п.12).
 ```sql
-CREATE OR REPLACE PROCEDURE setATime() AS $$
 BEGIN
 ALTER TABLE people ADD COLUMN actual_time TIMESTAMP DEFAULT NOW();
 COMMIT;
-END
-$$ LANGUAGE plpgsql;
-
-CALL setATime();
 ```
 # 15.Напишите процедуру, которая позволяет актуализировать рост и вес человека.
 ```sql
