@@ -5,7 +5,7 @@ CREATE TABLE people (
   name VARCHAR(255)
 );
 
--- INSERT INTO people (name) VALUES
--- ('Владимир'), ('Владислав'), ('Даниил');
+INSERT INTO people (name) VALUES
+('Владимир'), ('Владислав'), ('Даниил');
 
 COMMIT:

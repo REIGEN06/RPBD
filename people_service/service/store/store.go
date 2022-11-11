@@ -1,8 +1,8 @@
 package store
 
 import (
-	"context"
 	"fmt"
+	"os"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -42,40 +42,39 @@ func NewStore(connString string) *Store {
 	}
 }
 
-func (s *Store) ListPeople(ctx context.Context) ([]People, error) {
-	//rows, err := s.conn.QueryContext(ctx, `SELECT name, address FROM people`)
-	//defer rows.Close()
-	people := make([]People, 0) //слайс со всеми людьми
-	err := s.conn.SelectContext(ctx, &people, `SELECT name, address FROM people`)
+func (s *Store) ListPeople() ([]People, error) {
+	people := make([]People, 0)
+	var (
+		name string
+		id   int
+	)
+	//err := s.conn.SelectContext(ctx, &people, `SELECT name, address FROM people`)
+
+	rows, err := s.conn.Query(`SELECT * FROM people`)
 	if err != nil {
 		return nil, fmt.Errorf("store ListPeople error: %w", err)
 	}
+	defer rows.Close()
 
-	// if err != nil {
-	// 	fmt.Fprintf(os.Stderr, "Query failed: %v\n", err)
-	// 	return nil, nil
-	// }
-	// for rows.Next() {
-	// 	var (
-	// 		name    string
-	// 		address string
-	// 	)
+	for rows.Next() {
+		if err := rows.Scan(&id, &name); err != nil {
+			fmt.Fprintf(os.Stderr, "scan failed: %v\n", err)
+			return nil, nil
+		}
 
-	// 	if err := rows.Scan(&name, &address); err != nil {
-	// 		fmt.Fprintf(os.Stderr, "scan failed: %v\n", err)
-	// 		return nil, nil
-	// 	}
-	// 	people = append(people, &name, &address)
-
-	// }
+		people = append(people, People{ID: id, Name: name})
+	}
 	return people, err
 }
 
-func (s *Store) GetPeopleByID(ctx context.Context, id string) (People, error) {
-	var pp People
-	err := s.conn.SelectContext(ctx, pp, `SELECT name, address FROM people WHERE People.ID = id`)
-	if err != nil {
-		return nil, fmt.Errorf("store GetPeopleByID error: %w", err)
+func (s *Store) GetPeopleByID(id int) (People, error) {
+	//err := s.conn.SelectContext(ctx, pp, `SELECT name, address FROM people WHERE People.ID = id`)
+	var name string
+	row := s.conn.QueryRow(`SELECT * FROM people WHERE id = ?`, id)
+
+	if err := row.Scan(&id, &name); err != nil {
+		return People{}, fmt.Errorf("store GetPeopleByID error: %w", err)
 	}
-	return pp, nil
+
+	return People{ID: id, Name: name}, nil
 }
