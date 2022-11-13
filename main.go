@@ -6,10 +6,30 @@ import (
 )
 
 func main() {
+	fmt.Print("\x1b[2J")
 	creature := functions.NewPlayer()
-	fmt.Printf("Player created: Hole %v Health  %v Respect  %v Weight  %v\n",
-		creature.Hole, creature.Health, creature.Respect, creature.Weight)
+	fmt.Print("\tThe New Game is started!\n")
+	creature.Info()
+	for {
+		creature.Day()
+		if creature.CheckWin() {
+			fmt.Print("Congratulations, you passed the game!")
+			break
+		}
+		if creature.CheckDefeat() {
+			fmt.Print("You lose the game")
+			break
+		}
 
-	creature.Day()
-	fmt.Println(creature)
+		creature.Night()
+		if creature.CheckWin() {
+			fmt.Print("Congratulations, you passed the game!")
+			break
+		}
+		if creature.CheckDefeat() {
+			fmt.Print("You lose the game")
+			break
+		}
+	}
+
 }
