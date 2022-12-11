@@ -8,7 +8,7 @@ CREATE TABLE users (
 CREATE TABLE products (
   id SERIAL PRIMARY KEY,
   telegram_user_id INT NOT NULL
-  name CHAR(255)
+  name text(255)
   weight REAL(10)
   alreadyused BOOLEAN DEFAULT false
   inlist BOOLEAN DEFAULT false
