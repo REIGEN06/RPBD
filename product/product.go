@@ -1,31 +1,34 @@
 package product
 
 import (
+	"math"
 	"time"
 )
 
 type Product struct {
-	Id          int64   `db:"id"`
-	User_id     int64   `db:"telegram_user_id"`
-	Name        string  `db:"name"`
-	Weight      float64 `db:"weight"`
-	AlreadyUsed bool    `db:"alreadyused"`
-	InList      bool    `db:"inlist"`
-	InFridge    bool    `db:"infridge"`
-	InTrash     bool    `db:"intrash"`
-	created_at  string  `db:"created_at"`
-	finished_at string  `db:"finished_at"`
-	TimerEnable bool    `db:"timerenable"`
+	Id          int64     `db:"id"`
+	User_id     int64     `db:"telegram_user_id"`
+	Chat_id     int64     `db:"telegram_chat_id"`
+	Name        string    `db:"name"`
+	Weight      float64   `db:"weight"`
+	AlreadyUsed bool      `db:"alreadyused"`
+	InList      bool      `db:"inlist"`
+	InFridge    bool      `db:"infridge"`
+	InTrash     bool      `db:"intrash"`
+	Created_at  time.Time `db:"created_at"`
+	Finished_at time.Time `db:"finished_at"`
+	TimerEnable bool      `db:"timerenable"`
 }
 
-func (p *Product) CreateProduct(user_id int64, name string, weight float64, finished_at string) *Product {
+func (p *Product) CreateProduct(user_id int64, chat_id int64, name string, weight float64, inlist bool, infridge bool, created_at time.Time, finished_at time.Time, timer bool) *Product {
 	p.User_id = user_id
+	p.Chat_id = chat_id
 	p.Name = name
-	p.Weight = weight
-	p.InList = true
-	timenow := time.Now().Format(time.RFC3339)
-	p.created_at = timenow
-	p.finished_at = finished_at
-	p.TimerEnable = true
+	p.Weight = (math.Round(weight*100) / 100)
+	p.InList = inlist
+	p.InFridge = infridge
+	p.Created_at = created_at
+	p.Finished_at = finished_at.Add(-3 * time.Hour)
+	p.TimerEnable = timer
 	return p
 }

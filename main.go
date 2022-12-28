@@ -27,7 +27,8 @@ func SendMessageToUser(bot *tgbotapi.BotAPI, update tgbotapi.Update, msg string)
 	}
 }
 
-var status = 0
+// как лучше сделать таймер? как вообще делать его
+// запустить программу в goroutine как отдельный процесс
 
 func main() {
 	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_APITOKEN"))
@@ -35,7 +36,6 @@ func main() {
 		panic(err)
 	}
 	db := postgresql.Connect(os.Getenv("POSTGRESQL_TOKEN"))
-	//bot.Debug = true
 
 	updateConfig := tgbotapi.NewUpdate(0)
 	updateConfig.Timeout = 90
@@ -46,59 +46,167 @@ func main() {
 		}
 
 		user_msg := update.Message.Text
+		user_name := update.Message.From.FirstName
 		user_id := update.Message.From.ID
+		chat_id := update.Message.Chat.ID
+		status := db.GetStatus(user_id, chat_id)
 
-		log.Printf("user_name: %s \n", update.SentFrom().UserName)
+		log.Printf("user_name: %s \n", user_name)
+		//log.Printf("user_id: %d \n", user_id)
+		//log.Printf("chat_id: %d \n", chat_id)
+		//log.Printf("status: %d \n", status)
 		log.Printf("msg: %s \n", user_msg)
 		log.Println()
 
 		if status == 1 {
 			msg := "Продукт указан не верно"
-			temp := strings.Fields(user_msg)
-			if len(temp) >= 4 {
-				weight, errFloat := strconv.ParseFloat(temp[1], 32)
-				date, errDate := time.Parse("2006-01-02 15:04", temp[2]+" "+temp[3])
-				if (reflect.TypeOf(temp[0]) == reflect.TypeOf(user_msg)) && (errFloat == nil) && (errDate == nil) {
+			text := strings.Fields(user_msg)
+			if len(text) == 4 {
+				weight, errFloat := strconv.ParseFloat(text[1], 32)
+				date, errDate := time.Parse("02-01-2006 15:04", text[2]+" "+text[3])
+				if (reflect.TypeOf(text[0]) == reflect.TypeOf(user_msg)) && (errFloat == nil) && (errDate == nil) {
 					p := product.Product{}
-					p.CreateProduct(user_id, temp[0], weight, date.Format(time.RFC3339))
-					err := db.AddInList(&p)
-					status = 0
-					log.Print(p)
-					msg = "Продукт добавлен в список!"
+					p.CreateProduct(user_id, chat_id, text[0], weight, true, false, time.Now(), date, true)
+					err := db.AddIn(&p)
+
+					msg = "Продукт добавлен в список!\nТаймер заведён."
 					if err != nil {
-						msg = "Ошибка при добавлении в базу данных"
+						msg = "Ошибка при добавлении."
 					}
 				}
 			}
+			if len(text) == 1 {
+				p := product.Product{}
+				p.CreateProduct(user_id, chat_id, text[0], 0, true, false, time.Now(), time.Now(), false)
+				err := db.AddInF(&p)
+
+				msg = "Продукт добавлен в список!\nБез таймера."
+				if err != nil {
+					msg = "Ошибка при добавлении."
+				}
+			}
+			if len(text) == 3 && text[1] == "с" {
+				today := time.Now().Format("02-01-2006")
+				today += " " + text[2]
+				log.Println(today)
+				date, dateerr := time.Parse("02-01-2006 15:04", today)
+				log.Println(date)
+				if dateerr == nil {
+					p := product.Product{}
+					p.CreateProduct(user_id, chat_id, text[0], 0, true, false, time.Now(), date, true)
+					err := db.AddIn(&p)
+					msg = "Продукт добавлен в список!\nТаймер заведён."
+					if err != nil {
+						msg = "Ошибка при добавлении в базу данных."
+					}
+				} else {
+					msg = "С датой что-то не так.."
+				}
+			}
+			db.SetStatus(0, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		}
 
 		if status == 2 {
-			//msg := "новый - добавить новый продукт в холодильник\nстарый - перенести продукт в холодильник из списка"
+			msg := "Продукт указан не верно"
+			text := strings.Fields(user_msg)
+			if len(text) == 3 {
+				from, fromerr := time.Parse("02-01-2006", text[1])
+				to, toerr := time.Parse("02-01-2006", text[2])
+				if (fromerr == nil) && (toerr == nil) {
+					p := product.Product{}
+					p.CreateProduct(user_id, chat_id, text[0], 0, false, true, from, to, true)
+					err := db.AddIn(&p)
 
+					msg = text[0] + " добавлен в холодильник!"
+					if err != nil {
+						msg = "Ошибка при добавлении."
+					}
+				}
+			}
+			//купил - перенос из листа
+			if len(text) == 4 {
+				from, fromerr := time.Parse("02-01-2006", text[2])
+				to, toerr := time.Parse("02-01-2006", text[3])
+				if (fromerr == nil) && (toerr == nil) {
+					err := db.SetFridge(user_id, chat_id, from, to, text[1])
+
+					msg = text[1] + " перенесён из списка в холодильник!"
+					if err != nil {
+						msg = "Ошибка при переносе."
+					}
+				}
+			}
+			db.SetStatus(0, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+
+		if status == 3 {
+			msg := "Продукт указан не верно"
+			text := strings.Fields(user_msg)
+			if len(text) == 3 {
+				from, fromerr := time.Parse("02-01-2006", text[1])
+				to, toerr := time.Parse("02-01-2006", text[2])
+				if (fromerr == nil) && (toerr == nil) {
+					err := db.OpenProduct(user_id, chat_id, from, to, text[0])
+
+					msg = text[0] + " открыт, срок хранения обновлен!"
+					if err != nil {
+						msg = "Ошибка при открытии продукта."
+					}
+				}
+
+			}
+			db.SetStatus(0, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+		if user_msg == "/m" {
+			msg := "лю крысулечьку катю"
+			SendMessageToUser(bot, update, msg)
 		}
 
 		if user_msg == "/help" {
-			msg := "Этот бот умеет добавлять продукты в список или в ваш холодильник, устанавливать таймер на напоминание о покупке\nНажмите '/', чтобы увидеть доступные команды"
+			msg := "😳ВАЖНО😳 Перед тем, как впервые воспользоваться ботом, вам нужно написать команду /reg, чтобы бот вас запомнил.\n\nНажмите '/' или на кнопку 'Меню' слева внизу, чтобы увидеть доступные команды\n\nЭтот бот умеет:\n1. Добавлять продукты в список покупок\n2.Переносить из списка/добавлять продукты в холодильник\n3. Показывать список продуктов"
 			SendMessageToUser(bot, update, msg)
-		} else if user_msg == "/addinlist" {
-			if status == 0 {
-				msg := "Введите название продукта, вес и дату напоминания через пробел\nПример: Чипсы 0.1 2022-01-31 09:00"
-				SendMessageToUser(bot, update, msg)
-				status = 1
+		}
+
+		if user_msg == "/reg" {
+			msg := db.CreateUser(user_name, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+
+		if user_msg == "/addinlist" {
+			msg := "Введите название продукта(одним словом), вес(в граммах) и дату напоминания через пробел\nПример: Чипсы 80 31-01-2022 09:00\n\nЛибо просто введите название продукта😊"
+			db.SetStatus(1, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+
+		if user_msg == "/addinfridge" {
+			msg := "Если вы хотите перенести продукт из списка продуктов в холодильник, то введите 'купил', название продукта(одним словом) и срок хранения через пробел\nПример: купил Чипсы 31-01-2022 31-01-2023\n\nЕсли же вы хотите добавить новый продукт в холодильник, то введите название продукта и срок хранения через пробел\nПример: Чипсы 31-01-2022 31-01-2023"
+			db.SetStatus(2, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+
+		if user_msg == "/open" {
+			msg := "Введите название продукта(одним словом), который вы открыли и новый срок хранения\nПример: Чипсы 24-01-2022 31-01-2022"
+			db.SetStatus(3, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+
+		if user_msg == "/list" {
+			msg := "Список продуктов:"
+			products, _ := db.GetList(user_id, chat_id)
+			for i := 0; i < len(products); i++ {
+				msg += "\n" + strconv.Itoa(i) + ". " + products[i].Name
+				if products[i].Weight != 0 {
+					msg += ", " + strconv.FormatFloat(products[i].Weight, 'f', 0, 64) + "гр."
+				}
+				if products[i].TimerEnable {
+					msg += ", Таймер включен"
+				}
 			}
-		} else if user_msg == "/addinfridge" {
-			if status == 0 {
-				msg := "Введите название продукта, вес и дату напоминания через пробел\nПример: Чипсы 0.1 2022-01-31 09:00"
-				SendMessageToUser(bot, update, msg)
-				status = 2
-			}
-		} else if user_msg == "/open" {
-			if status == 0 {
-				msg := "Введите название продукта, который вы открыли"
-				SendMessageToUser(bot, update, msg)
-				status = 3
-			}
+			SendMessageToUser(bot, update, msg)
 		}
 	}
+
 }
