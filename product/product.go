@@ -6,18 +6,19 @@ import (
 )
 
 type Product struct {
-	Id          int64     `db:"id"`
-	User_id     int64     `db:"telegram_user_id"`
-	Chat_id     int64     `db:"telegram_chat_id"`
-	Name        string    `db:"name"`
-	Weight      float64   `db:"weight"`
-	AlreadyUsed bool      `db:"alreadyused"`
-	InList      bool      `db:"inlist"`
-	InFridge    bool      `db:"infridge"`
-	InTrash     bool      `db:"intrash"`
-	Created_at  time.Time `db:"created_at"`
-	Finished_at time.Time `db:"finished_at"`
-	TimerEnable bool      `db:"timerenable"`
+	Id          int64         `db:"id"`
+	User_id     int64         `db:"telegram_user_id"`
+	Chat_id     int64         `db:"telegram_chat_id"`
+	Name        string        `db:"name"`
+	Weight      float64       `db:"weight"`
+	AlreadyUsed bool          `db:"alreadyused"`
+	InList      bool          `db:"inlist"`
+	InFridge    bool          `db:"infridge"`
+	InTrash     bool          `db:"intrash"`
+	Created_at  time.Time     `db:"created_at"`
+	Finished_at time.Time     `db:"finished_at"`
+	Rest_time   time.Duration `db:"rest_time"`
+	TimerEnable bool          `db:"timerenable"`
 }
 
 func (p *Product) CreateProduct(user_id int64, chat_id int64, name string, weight float64, inlist bool, infridge bool, created_at time.Time, finished_at time.Time, timer bool) *Product {
@@ -29,6 +30,7 @@ func (p *Product) CreateProduct(user_id int64, chat_id int64, name string, weigh
 	p.InFridge = infridge
 	p.Created_at = created_at
 	p.Finished_at = finished_at.Add(-3 * time.Hour)
+	p.Rest_time = p.Finished_at.Sub(time.Now())
 	p.TimerEnable = timer
 	return p
 }
