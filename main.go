@@ -26,6 +26,7 @@ func SendMessageToUser(bot *tgbotapi.BotAPI, update tgbotapi.Update, msg string)
 	if _, err := bot.Send(bot_msg); err != nil {
 		panic(err)
 	}
+	//log.Println(msg)
 }
 
 // как лучше сделать таймер? как вообще делать его
@@ -68,7 +69,7 @@ func main() {
 				weight, errFloat := strconv.ParseFloat(text[1], 32)
 				date, errDate := time.Parse("02-01-2006 15:04", text[2]+" "+text[3])
 				if date.Before(time.Now()) {
-					msg = "Некорректное время"
+					msg = "Ошибка: Дата уже истекла"
 				}
 				if (reflect.TypeOf(text[0]) == reflect.TypeOf(user_msg)) && (errFloat == nil) && (errDate == nil) && date.After(time.Now()) {
 					p := product.Product{}
@@ -96,7 +97,7 @@ func main() {
 				today += " " + text[2]
 				date, dateerr := time.Parse("02-01-2006 15:04", today)
 				if date.Before(time.Now()) {
-					msg = "Выбранное время уже прошло!"
+					msg = "Ошибка: Дата уже истекла"
 				}
 				if dateerr == nil && date.After(time.Now()) {
 					p := product.Product{}
@@ -110,7 +111,6 @@ func main() {
 					msg = "С датой что-то не так.."
 				}
 			}
-
 			db.SetStatus(0, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		}
@@ -120,8 +120,11 @@ func main() {
 			if len(text) == 3 {
 				from, fromerr := time.Parse("02-01-2006", text[1])
 				to, toerr := time.Parse("02-01-2006", text[2])
-				if to.Before(from) && to.Before(time.Now()) {
-					msg = "Некорректное время"
+				if to.Before(from) {
+					msg = "Ошибка: Правая дата раньше левой"
+				}
+				if to.Before(time.Now()) {
+					msg = "Ошибка: Правая дата уже истекла"
 				}
 				if (fromerr == nil) && (toerr == nil) && to.After(from) && to.After(time.Now()) {
 					p := product.Product{}
@@ -144,7 +147,7 @@ func main() {
 				if (fromerr == nil) && (toerr == nil) && to.After(from) && to.After(time.Now()) {
 					err := db.SetFridge(user_id, chat_id, from, to, text[1])
 
-					msg = text[1] + " перенесён из списка в холодильник!"
+					msg = text[1] + " перенесён в холодильник!"
 					if err != nil {
 						msg = "Ошибка при переносе."
 						if err.Error() == "NOT_EXISTS" {
@@ -162,8 +165,11 @@ func main() {
 			if len(text) == 3 {
 				from, fromerr := time.Parse("02-01-2006", text[1])
 				to, toerr := time.Parse("02-01-2006", text[2])
-				if to.Before(from) && to.Before(time.Now()) {
-					msg = "Некорректное время"
+				if to.Before(from) {
+					msg = "Ошибка: Правая дата раньше левой"
+				}
+				if to.Before(time.Now()) {
+					msg = "Ошибка: Правая дата уже истекла"
 				}
 				if (fromerr == nil) && (toerr == nil) && to.After(from) && to.After(time.Now()) {
 					err := db.SetUsed(user_id, chat_id, from, to, text[0])
@@ -201,13 +207,15 @@ func main() {
 			msg := "Неправильно выбран список"
 			text := strings.Fields(user_msg)
 			if len(text) == 1 {
-				if text[0] == "1" || text[0] == "2" {
+				if text[0] == "1" || text[0] == "2" || text[0] == "3" {
 					param, _ := strconv.ParseInt(text[0], 10, 64)
 					msg = "Список продуктов"
 					if text[0] == "1" {
-						msg += " по алфавиту"
+						msg += " по алфавиту:"
 					} else if text[0] == "2" {
-						msg += " в холодильнике по сроку годности"
+						msg += " в холодильнике по сроку годности:"
+					} else if text[0] == "3" {
+						msg += " (полный):"
 					}
 					products, _ := db.GetList(user_id, chat_id, param)
 					for i := 0; i < len(products); i++ {
@@ -218,8 +226,8 @@ func main() {
 						if products[i].TimerEnable && products[i].Rest_time > 0 {
 							msg += ", таймер включен"
 						}
-						if text[0] == "2" && products[i].TimerEnable {
-							if products[i].Rest_time > 0 {
+						if (text[0] == "2" || text[0] == "3") && products[i].TimerEnable {
+							if products[i].Rest_time > 0 { //&& products[i].Rest_time < 20000
 								rtime := products[i].Rest_time.String()
 								rtime = strings.ReplaceAll(rtime, "h", " часов, ")
 								rtime = strings.ReplaceAll(rtime, "m", " минут, ")
@@ -228,10 +236,45 @@ func main() {
 							} else {
 								msg += ", срок годности вышел"
 							}
-
+						}
+						if text[0] == "3" && products[i].InTrash {
+							msg += " [Приготовлен/Выкинут]"
+						} else if text[0] == "3" && products[i].AlreadyUsed {
+							msg += " [Открыт]"
+						} else if text[0] == "3" && products[i].InList {
+							msg += " [Список продуктов]"
+						} else if text[0] == "3" && products[i].InFridge {
+							msg += " [Холодильник]"
 						}
 					}
 
+				}
+			}
+			db.SetStatus(0, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		}
+		if status == 6 {
+			msg := "Слишком много параметров"
+			text := strings.Fields(user_msg)
+			if len(text) == 2 {
+				from, fromerr := time.Parse("02-01-2006", text[0])
+				to, toerr := time.Parse("02-01-2006", text[1])
+				if to.Before(from) {
+					msg = "Ошибка: Правая дата раньше левой"
+				}
+				if to.Before(time.Now()) {
+					msg = "Ошибка: Правая дата уже истекла"
+				}
+				if (fromerr == nil) && (toerr == nil) && to.After(from) && to.After(time.Now()) {
+					alreadyused, trashcount, _ := db.StatusTime(user_id, chat_id, from, to)
+					msg = "В этот промежуток времени нет использованных продуктов"
+					if len(alreadyused) != 0 {
+						msg = "Список использованных продуктов за промежуток с " + from.Format("2006-01-02") + " по " + to.Format("2006-01-02") + ":"
+						for i := 0; i < len(alreadyused); i++ {
+							msg += "\n" + strconv.Itoa(i+1) + ". " + alreadyused[i].Name
+						}
+					}
+					msg += "\n\nКоличество приготовленных/выкинутых продуктов: " + strconv.Itoa(trashcount)
 				}
 			}
 			db.SetStatus(0, user_id, chat_id)
@@ -249,24 +292,24 @@ func main() {
 			db.SetStatus(1, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if user_msg == "/addinfridge" {
-			msg := "Если вы хотите перенести продукт из списка продуктов в холодильник, то введите 'купил', название продукта(одним словом) и срок хранения через пробел\nПример: купил Чипсы 31-01-2022 31-01-2023\n\nЕсли же вы хотите добавить новый продукт в холодильник, то введите название продукта и срок хранения через пробел\nПример: Чипсы 31-01-2022 31-01-2023"
+			msg := "Если вы хотите перенести продукт из списка продуктов в холодильник, то введите 'купил', название продукта(одним словом) и срок хранения через пробел\nПример: купил Чипсы 31-01-2022 31-01-2023\n\nЕсли же вы хотите добавить новый продукт в холодильник, то введите название продукта и срок хранения через пробел\nПример: Чипсы 31-01-2022 31-01-2023\n\nРегистр важен! (хлеб и Хлеб это разные продукты)"
 			db.SetStatus(2, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if user_msg == "/open" {
-			msg := "Введите название продукта(одним словом), который вы открыли и новый срок хранения\nПример: Чипсы 24-01-2022 31-01-2022"
+			msg := "Введите название продукта(одним словом), который вы открыли и новый срок хранения\nПример: Чипсы 24-01-2022 31-01-2023\n\nРегистр важен! (хлеб и Хлеб это разные продукты)"
 			db.SetStatus(3, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if user_msg == "/finish" {
-			msg := "Введите название продукта(одним словом), который вы приготовили/выбросили"
+			msg := "Введите название продукта(одним словом), который вы приготовили/выбросили\n\nРегистр важен! (хлеб и Хлеб это разные продукты)"
 			db.SetStatus(4, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if user_msg == "/list" {
-			msg := "Введите цифру сортировки списка продуктов: \n1.По алфавиту [Список покупок]\n2.По истечению срока годности [Холодильник]"
+			msg := "Введите цифру сортировки списка продуктов: \n1.По алфавиту [Список покупок]\n2.По истечению срока годности [Холодильник]\n3.Список всех продуктов"
 			db.SetStatus(5, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if user_msg == "/listused" {
 			msg := "Список ранее использованных продуктов"
-			products, _ := db.GetList(user_id, chat_id, 3)
+			products, _ := db.GetList(user_id, chat_id, 4)
 			for i := 0; i < len(products); i++ {
 				msg += "\n" + strconv.Itoa(i+1) + ". " + products[i].Name
 				if products[i].Weight != 0 {
@@ -281,9 +324,12 @@ func main() {
 				} else {
 					msg += ", срок годности вышел"
 				}
-
 			}
 			db.SetStatus(0, user_id, chat_id)
+			SendMessageToUser(bot, update, msg)
+		} else if user_msg == "/statustime" {
+			msg := "Введите за какой промежуток промежуток времени вы хотите просмотреть статистику\nПример: 30-12-2022 31-12-2022"
+			db.SetStatus(6, user_id, chat_id)
 			SendMessageToUser(bot, update, msg)
 		} else if status <= 0 {
 			msg := "Команда не распознана"

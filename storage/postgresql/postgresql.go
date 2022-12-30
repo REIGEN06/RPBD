@@ -75,8 +75,8 @@ func (c *Connection) CreateUser(nickname string, name string, user_id int64, cha
 }
 
 func (c *Connection) AddIn(p *product.Product) error {
-	_, err := c.conn.NamedExec(`INSERT INTO products (telegram_user_id, telegram_chat_id, name, weight, inlist, infridge,  timerenable, created_at, finished_at, rest_time)
-	VALUES (:telegram_user_id, :telegram_chat_id, :name, :weight, :inlist, :infridge, :timerenable, :created_at, :finished_at, :rest_time)`, p)
+	_, err := c.conn.NamedExec(`INSERT INTO products (telegram_user_id, telegram_chat_id, name, weight, inlist, infridge,  timerenable, created_at, finished_at, rest_time, last_update)
+	VALUES (:telegram_user_id, :telegram_chat_id, :name, :weight, :inlist, :infridge, :timerenable, :created_at, :finished_at, :rest_time, :last_update)`, p)
 	if err != nil {
 		log.Printf("AddInfail: %s", err)
 		return err
@@ -99,6 +99,10 @@ func (c *Connection) GetList(user_id int64, chat_id int64, param int64) ([]produ
 		weight      float64
 		timerenable bool
 		rest_time   int64
+		alreadyused bool
+		inlist      bool
+		infridge    bool
+		intrash     bool
 	)
 	c.UpdateTimer(user_id, chat_id)
 	if param == 1 {
@@ -130,6 +134,19 @@ func (c *Connection) GetList(user_id int64, chat_id int64, param int64) ([]produ
 		}
 		return products, err
 	} else if param == 3 {
+		rows, err := c.conn.Query(`SELECT id, name, weight, rest_time, timerenable, alreadyused, inlist, infridge, intrash FROM products WHERE telegram_user_id = $1 AND telegram_chat_id = $2`, user_id, chat_id)
+		if err != nil {
+			return nil, fmt.Errorf("GetListAll error: %w", err)
+		}
+		defer rows.Close()
+		for rows.Next() {
+			if err := rows.Scan(&id, &name, &weight, &rest_time, &timerenable, &alreadyused, &inlist, &infridge, &intrash); err != nil {
+				return nil, fmt.Errorf("GetListAll scan failed: %w\n", err)
+			}
+			products = append(products, product.Product{Id: id, Name: name, Weight: weight, TimerEnable: timerenable, Rest_time: time.Duration(rest_time), AlreadyUsed: alreadyused, InList: inlist, InFridge: infridge, InTrash: intrash})
+		}
+		return products, err
+	} else if param == 4 {
 		rows, err := c.conn.Query(`SELECT id, name, weight, rest_time FROM products WHERE telegram_user_id = $1 AND telegram_chat_id = $2 AND alreadyused = $3 ORDER BY rest_time ASC`, user_id, chat_id, true)
 		if err != nil {
 			return nil, fmt.Errorf("GetList LastTime error: %w", err)
@@ -147,6 +164,44 @@ func (c *Connection) GetList(user_id int64, chat_id int64, param int64) ([]produ
 	return products, nil
 }
 
+func (c *Connection) StatusTime(user_id int64, chat_id int64, from time.Time, to time.Time) ([]product.Product, int, error) {
+	used_prod := make([]product.Product, 0) //список всех использованных
+	trash_prod := 0                         //количество всех выкинутых\приготовленных
+	var (
+		name        string
+		last_update time.Time
+	)
+	//использованные
+	rows, err := c.conn.Query(`SELECT name, last_update FROM products WHERE telegram_user_id = $1 AND telegram_chat_id = $2 AND alreadyused = $3 ORDER BY name ASC`, user_id, chat_id, true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("StatusTime alreadyused error: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&name, &last_update); err != nil {
+			return nil, 0, fmt.Errorf("StatusTime alreadyused scan failed: %w", err)
+		}
+		if last_update.After(from) && last_update.Before(to) {
+			used_prod = append(used_prod, product.Product{Name: name, Last_update: last_update})
+		}
+	}
+
+	rows, err = c.conn.Query(`SELECT last_update FROM products WHERE telegram_user_id = $1 AND telegram_chat_id = $2 AND intrash = $3 ORDER BY name ASC`, user_id, chat_id, true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("StatusTime intrash error: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		if err := rows.Scan(&last_update); err != nil {
+			return nil, 0, fmt.Errorf("StatusTime intrash scan failed: %w", err)
+		}
+		if last_update.After(from) && last_update.Before(to) {
+			trash_prod += 1
+		}
+	}
+	return used_prod, trash_prod, err
+}
+
 func (c *Connection) SetStatus(newStatus int, user_id int64, chat_id int64) {
 	sqlStatement := `UPDATE users SET user_status = $1 WHERE telegram_user_id = $2 AND telegram_chat_id = $3`
 	_, err := c.conn.Exec(sqlStatement, newStatus, user_id, chat_id)
@@ -162,8 +217,8 @@ func (c *Connection) SetFridge(user_id int64, chat_id int64, from time.Time, to 
 	existErr := errors.New("NOT_EXISTS")
 	if exists != 0 {
 		c.UpdateTimer(user_id, chat_id)
-		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, created_at = $5, finished_at = $6, timerenable = $7 WHERE telegram_user_id = $8 AND telegram_chat_id = $9 AND name = $10`
-		_, err := c.conn.Exec(sqlStatement, false, false, true, false, from, to, true, user_id, chat_id, name)
+		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, created_at = $5, finished_at = $6, timerenable = $7, last_update = NOW() WHERE telegram_user_id = $8 AND telegram_chat_id = $9 AND name = $10`
+		_, err := c.conn.Exec(sqlStatement, false, false, true, false, from, to.Add(time.Duration(exists)*time.Millisecond*100), true, user_id, chat_id, name)
 		if err != nil {
 			log.Println(err)
 		}
@@ -178,7 +233,7 @@ func (c *Connection) SetTrash(user_id int64, chat_id int64, name string) error {
 	existErr := errors.New("NOT_EXISTS")
 	if exists != 0 {
 		c.UpdateTimer(user_id, chat_id)
-		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, timerenable = $5 WHERE telegram_user_id = $6 AND telegram_chat_id = $7 AND name = $8`
+		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, timerenable = $5, last_update = NOW() WHERE telegram_user_id = $6 AND telegram_chat_id = $7 AND name = $8`
 		_, err := c.conn.Exec(sqlStatement, true, false, false, true, false, user_id, chat_id, name)
 		if err != nil {
 			log.Println(err)
@@ -194,8 +249,8 @@ func (c *Connection) SetUsed(user_id int64, chat_id int64, from time.Time, to ti
 	existErr := errors.New("NOT_EXISTS")
 	if exists != 0 {
 		c.UpdateTimer(user_id, chat_id)
-		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, created_at = $5, finished_at = $6, timerenable = $7 WHERE telegram_user_id = $8 AND telegram_chat_id = $9 AND name = $10`
-		_, err := c.conn.Exec(sqlStatement, true, false, false, false, from, to, true, user_id, chat_id, name)
+		sqlStatement := `UPDATE products SET alreadyused = $1, inlist = $2, infridge = $3, intrash = $4, created_at = $5, finished_at = $6, timerenable = $7, last_update = NOW() WHERE telegram_user_id = $8 AND telegram_chat_id = $9 AND name = $10`
+		_, err := c.conn.Exec(sqlStatement, true, false, false, false, from, to.Add(time.Duration(exists)*time.Millisecond*100), true, user_id, chat_id, name)
 		if err != nil {
 			log.Println(err)
 		}

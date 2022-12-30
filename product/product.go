@@ -17,6 +17,7 @@ type Product struct {
 	InTrash     bool          `db:"intrash"`
 	Created_at  time.Time     `db:"created_at"`
 	Finished_at time.Time     `db:"finished_at"`
+	Last_update time.Time     `db:"last_update"`
 	Rest_time   time.Duration `db:"rest_time"`
 	TimerEnable bool          `db:"timerenable"`
 }
@@ -30,6 +31,7 @@ func (p *Product) CreateProduct(user_id int64, chat_id int64, name string, weigh
 	p.InFridge = infridge
 	p.Created_at = created_at
 	p.Finished_at = finished_at.Add(-3 * time.Hour)
+	p.Last_update = time.Now()
 	p.Rest_time = p.Finished_at.Sub(time.Now())
 	p.TimerEnable = timer
 	return p

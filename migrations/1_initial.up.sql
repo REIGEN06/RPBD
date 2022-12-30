@@ -21,6 +21,7 @@ CREATE TABLE products (
   intrash BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE,
   finished_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+  last_update TIMESTAMP WITH TIME ZONE,
   rest_time BIGINT DEFAULT 0,
   timerenable BOOLEAN DEFAULT false
 );
