@@ -30,7 +30,7 @@ func (p *Product) CreateProduct(user_id int64, chat_id int64, name string, weigh
 	p.InList = inlist
 	p.InFridge = infridge
 	p.Created_at = created_at
-	p.Finished_at = finished_at.Add(-3 * time.Hour)
+	p.Finished_at = finished_at
 	p.Last_update = time.Now()
 	p.Rest_time = p.Finished_at.Sub(time.Now())
 	p.TimerEnable = timer
