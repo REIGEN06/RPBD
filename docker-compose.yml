@@ -1,0 +1,45 @@
+version: '2.4'
+services:
+  postgres:
+    image: postgres:15.1
+    container_name: BuyDanBot-postgres
+
+    ports:
+    - 5432:5432
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '100m'
+        max-file: '5'
+
+    environment:
+      - POSTGRES_DB=GolangBuyDanBot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  BuyDanBot:
+    build:
+      context: .
+
+    image: BuyDanBot:latest
+    container_name: BuyDanBot
+    hostname: BuyDanBot
+
+    ports:
+      - 8081:8081
+
+    logging:
+      driver: json-file
+      options:
+        max-size: '100m'
+        max-file: '5'
+
+    environment:
+      - TELEGRAM_APITOKEN=5742376186:AAGMESXxL90ROeASjU3wkuaBA_0uwQICLag
