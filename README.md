@@ -12,7 +12,7 @@ GO APP
 
 Добавил кучу примеров прямо в команды, чтобы человек с любым опытом работы с ботами мог воспользоваться им.
 
-Для приложения требуются пакеты:
+Для приложения требуются пакеты:  
 1.github.com/golang-migrate/migrate/v4 v4.15.2  
 2.github.com/jackc/pgx v3.6.2+incompatible  
 3.github.com/jmoiron/sqlx v1.3.5  
