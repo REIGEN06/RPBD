@@ -1,5 +1,5 @@
-GO APP
-Был выбран проект BUY LIST
+GO APP\n
+Был выбран проект BUY LIST\n
 Реализованы все требуемые функции из https://github.com/RyabovNick/databasecourse_p2/tree/master/golang/tasks/go_app/buy_list
 
 Все миграции работают!!
@@ -13,10 +13,10 @@ GO APP
 Добавил кучу примеров прямо в команды, чтобы человек с любым опытом работы с ботами мог воспользоваться им.
 
 Для приложения требуются пакеты:
-1.github.com/golang-migrate/migrate/v4 v4.15.2
-2.github.com/jackc/pgx v3.6.2+incompatible
-3.github.com/jmoiron/sqlx v1.3.5
-4.github.com/joho/godotenv v1.4.0
-5.github.com/lib/pq v1.10.2
+\n1.github.com/golang-migrate/migrate/v4 v4.15.2
+\n2.github.com/jackc/pgx v3.6.2+incompatible
+\n3.github.com/jmoiron/sqlx v1.3.5
+\n4.github.com/joho/godotenv v1.4.0
+\n5.github.com/lib/pq v1.10.2
 
 Первый необходим для работы с миграциями в бд, второй для подключения к БД через драйвер pgx, третий для работы с SQL запросами, четвертый, чтобы не палить всем в мейне своей файл .env, хотя я его все равно загрузил последним пушем на случай, если с докером программу не получится запустить, пятый для работы с time.Time
